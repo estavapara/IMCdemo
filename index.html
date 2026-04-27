@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculadora IMC</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ===== LIGHT THEME ===== */
+  :root, [data-theme="light"] {
+    --bg:                 #f8f9ff;
+    --card-bg:            #ffffff;
+    --primary:            #00685f;
+    --primary-hover:      #008378;
+    --primary-text:       #ffffff;
+    --surface-low:        #eff4ff;
+    --surface-mid:        #e5eeff;
+    --on-surface:         #0b1c30;
+    --on-surface-variant: #3d4947;
+    --outline:            #6d7a77;
+    --outline-variant:    #bcc9c6;
+    --error:              #ba1a1a;
+    --input-bg:           #eff4ff;
+    --input-focus-bg:     #ffffff;
+    --chip-bg:            rgba(0,0,0,0.05);
+    --divider:            #bcc9c6;
+    --radius:             0.5rem;
+    --radius-lg:          1rem;
+    --radius-xl:          1.5rem;
+  }
+
+  /* ===== DARK THEME ===== */
+  [data-theme="dark"] {
+    --bg:                 #0f172a;
+    --card-bg:            #1e293b;
+    --primary:            #6bd8cb;
+    --primary-hover:      #89f5e7;
+    --primary-text:       #002019;
+    --surface-low:        #243044;
+    --surface-mid:        #1a2840;
+    --on-surface:         #eaf1ff;
+    --on-surface-variant: #a8bcb8;
+    --outline:            #7a8c89;
+    --outline-variant:    #334155;
+    --error:              #ff8080;
+    --input-bg:           #243044;
+    --input-focus-bg:     #2d3f56;
+    --chip-bg:            rgba(255,255,255,0.07);
+    --divider:            #334155;
+  }
+
+  html, body { transition: background 0.3s, color 0.3s; }
+  body {
+    font-family: 'Manrope', sans-serif;
+    background: var(--bg);
+    color: var(--on-surface);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px 60px;
+  }
+  .container { width: 100%; max-width: 600px; }
+
+  /* ===== THEME TOGGLE BAR ===== */
+  .topbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .topbar-label {
+    font-size: 13px; font-weight: 600;
+    color: var(--on-surface-variant);
+    display: flex; align-items: center; gap: 5px;
+    user-select: none; transition: color 0.3s;
+  }
+  .topbar-label svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  /* Switch */
+  .switch { position: relative; width: 50px; height: 28px; cursor: pointer; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .sw-track {
+    position: absolute; inset: 0;
+    border-radius: 999px;
+    background: var(--outline-variant);
+    border: 1.5px solid var(--outline-variant);
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .switch input:checked ~ .sw-track { background: var(--primary); border-color: var(--primary); }
+  .sw-thumb {
+    position: absolute; top: 4px; left: 4px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff;
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none;
+  }
+  .switch input:checked ~ .sw-thumb { transform: translateX(22px); }
+
+  /* ===== HEADER ===== */
+  .header { text-align: center; margin-bottom: 32px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--surface-mid);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-xl);
+    padding: 6px 16px;
+    font-size: 12px; font-weight: 600;
+    color: var(--primary);
+    letter-spacing: 0.05em; text-transform: uppercase;
+    margin-bottom: 14px; transition: background 0.3s, border-color 0.3s;
+  }
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+  .header h1 {
+    font-size: 32px; font-weight: 700;
+    letter-spacing: -0.02em; line-height: 1.2;
+    color: var(--on-surface); margin-bottom: 10px;
+  }
+  .header p { font-size: 16px; color: var(--on-surface-variant); line-height: 1.5; }
+
+  /* ===== CARD ===== */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  /* ===== SECTION TITLE ===== */
+  .sec-title {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--outline);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sec-title::after { content: ''; flex: 1; height: 1px; background: var(--outline-variant); }
+
+  /* ===== FORM ===== */
+  .form-section { margin-bottom: 26px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+
+  label {
+    font-size: 14px; font-weight: 600;
+    color: var(--on-surface); line-height: 1.4;
+  }
+  label .req { color: var(--primary); margin-left: 2px; }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="number"] {
+    width: 100%; height: 48px;
+    padding: 0 14px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 15px; color: var(--on-surface);
+    background: var(--input-bg);
+    border: 1.5px solid var(--outline-variant);
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s;
+    appearance: none;
+  }
+  input::placeholder { color: var(--outline); }
+  input:hover { border-color: var(--outline); }
+  input:focus {
+    border-color: var(--primary);
+    background: var(--input-focus-bg);
+    box-shadow: 0 0 0 3px rgba(0,104,95,0.14);
+  }
+  [data-theme="dark"] input:focus { box-shadow: 0 0 0 3px rgba(107,216,203,0.18); }
+  input.err { border-color: var(--error) !important; }
+  .err-msg { font-size: 12px; color: var(--error); font-weight: 500; display: none; }
+  .err-msg.show { display: block; }
+
+  /* ===== SEGMENTED ===== */
+  .segmented {
+    display: flex;
+    background: var(--surface-mid);
+    border: 1.5px solid var(--outline-variant);
+    border-radius: var(--radius);
+    padding: 4px; gap: 4px;
+    transition: background 0.3s;
+  }
+  .segmented input[type="radio"] { display: none; }
+  .segmented label {
+    flex: 1; text-align: center;
+    padding: 9px 8px;
+    font-size: 14px; font-weight: 600;
+    color: var(--on-surface-variant);
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    user-select: none;
+  }
+  .segmented input[type="radio"]:checked + label {
+    background: var(--primary);
+    color: var(--primary-text);
+  }
+
+  /* ===== METRIC INPUTS ===== */
+  .mrow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
+  .mfield { position: relative; }
+  .mfield input { padding-right: 50px; }
+  .munit {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    font-size: 13px; font-weight: 600; color: var(--outline); pointer-events: none;
+  }
+
+  /* ===== RECAPTCHA SECTION ===== */
+  .captcha-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    background: var(--surface-low);
+    border: 1.5px solid var(--outline-variant);
+    border-radius: var(--radius);
+    padding: 20px 20px 16px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .captcha-header {
+    width: 100%;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: var(--on-surface-variant);
+  }
+  .captcha-header svg { width: 16px; height: 16px; color: var(--primary); flex-shrink: 0; }
+  .captcha-err {
+    width: 100%;
+    font-size: 12px; font-weight: 600; color: var(--error);
+    display: none;
+  }
+  .captcha-err.show { display: block; }
+
+  /* ===== DIVIDER ===== */
+  .divider { height: 1px; background: var(--divider); margin: 24px 0; transition: background 0.3s; }
+
+  /* ===== BUTTON ===== */
+  .btn {
+    width: 100%; height: 52px;
+    background: var(--primary); color: var(--primary-text);
+    border: none; border-radius: var(--radius);
+    font-family: 'Manrope', sans-serif;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.2s, transform 0.1s, color 0.2s;
+    margin-top: 6px;
+  }
+  .btn:hover { background: var(--primary-hover); }
+  .btn:active { transform: scale(0.99); }
+  .btn:disabled { background: var(--outline-variant); color: var(--outline); cursor: not-allowed; }
+
+  /* ===== RESULT CARD ===== */
+  .result-card {
+    display: none;
+    border-radius: var(--radius-lg); border: 1.5px solid;
+    padding: 28px 28px 24px;
+    margin-top: 28px;
+    animation: slideIn 0.35s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .res-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .res-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .res-sub  { font-size: 12px; font-weight: 500; opacity: 0.7; }
+  .res-val  { text-align: right; }
+  .res-imc  { font-size: 42px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+  .res-unit { font-size: 13px; font-weight: 500; opacity: 0.65; margin-top: 3px; }
+  .res-cat  {
+    display: inline-block;
+    padding: 5px 14px; border-radius: var(--radius-xl);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    margin-top: 10px; border: 1.5px solid currentColor;
+  }
+
+  /* ===== GAUGE ===== */
+  .gauge { margin-top: 18px; }
+  .gauge-track {
+    height: 10px; border-radius: 999px;
+    background: linear-gradient(to right,
+      #93c5fd 0%, #6ee7b7 20%, #6ee7b7 45%,
+      #fcd34d 60%, #fb923c 78%, #f87171 100%);
+    position: relative; margin-bottom: 7px;
+  }
+  .gauge-pin {
+    position: absolute; top: -5px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--card-bg);
+    border: 3px solid var(--on-surface);
+    transform: translateX(-50%);
+    transition: left 0.65s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .gauge-lbls {
+    display: flex; justify-content: space-between;
+    font-size: 10px; font-weight: 600; color: var(--outline);
+  }
+
+  /* ===== INFO CHIPS ===== */
+  .chips { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .chip {
+    background: var(--chip-bg); border-radius: var(--radius);
+    padding: 10px 12px; text-align: center;
+  }
+  .chip-lbl { font-size: 10px; font-weight: 600; opacity: 0.6; margin-bottom: 3px; }
+  .chip-val { font-size: 15px; font-weight: 700; }
+
+  /* ===== STATUS ===== */
+  .status {
+    display: none; align-items: center; gap: 10px;
+    padding: 13px 16px; border-radius: var(--radius);
+    font-size: 14px; font-weight: 600;
+    margin-top: 14px; border: 1px solid;
+  }
+  .status.ok  { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; display: flex; }
+  .status.err { background: #fef2f2; color: #7f1d1d; border-color: #fca5a5; display: flex; }
+  [data-theme="dark"] .status.ok  { background: #052e1c; color: #6ee7b7; border-color: #166534; }
+  [data-theme="dark"] .status.err { background: #2d0b0b; color: #fca5a5; border-color: #7f1d1d; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 520px) {
+    .card { padding: 24px 18px; }
+    .row, .mrow { grid-template-columns: 1fr; }
+    .chips { grid-template-columns: 1fr 1fr; }
+    .res-imc { font-size: 34px; }
+    .res-head { flex-direction: column; gap: 10px; }
+    .res-val { text-align: left; }
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- TOPBAR: theme switch -->
+  <div class="topbar">
+    <span class="topbar-label">
+      <!-- sun icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      Claro
+    </span>
+
+    <label class="switch" title="Cambiar tema claro / oscuro">
+      <input type="checkbox" id="themeSwitch" />
+      <span class="sw-track"></span>
+      <span class="sw-thumb"></span>
+    </label>
+
+    <span class="topbar-label">
+      <!-- moon icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+      </svg>
+      Oscuro
+    </span>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="badge"><span class="badge-dot"></span>Herramienta Clínica</div>
+    <h1>Calculadora de IMC</h1>
+    <p>Ingresa tus datos para calcular tu Índice de Masa Corporal y recibir los resultados por correo electrónico.</p>
+  </div>
+
+  <!-- CARD -->
+  <div class="card">
+    <form id="imcForm" novalidate>
+
+      <!-- DATOS PERSONALES -->
+      <div class="form-section">
+        <div class="sec-title">Datos personales</div>
+        <div class="row">
+          <div class="field">
+            <label for="nombre">Nombre <span class="req">*</span></label>
+            <input type="text" id="nombre" placeholder="Ej. María" autocomplete="given-name" />
+            <span class="err-msg" id="eNombre">Campo requerido</span>
+          </div>
+          <div class="field">
+            <label for="apellidos">Apellidos <span class="req">*</span></label>
+            <input type="text" id="apellidos" placeholder="Ej. García López" autocomplete="family-name" />
+            <span class="err-msg" id="eApellidos">Campo requerido</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="email">Correo electrónico <span class="req">*</span></label>
+            <input type="email" id="email" placeholder="tucorreo@ejemplo.com" autocomplete="email" />
+            <span class="err-msg" id="eEmail">Ingresa un correo válido</span>
+          </div>
+          <div class="field">
+            <label for="edad">Edad <span class="req">*</span></label>
+            <input type="number" id="edad" placeholder="30" min="1" max="120" />
+            <span class="err-msg" id="eEdad">Ingresa una edad válida (1–120)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- GÉNERO -->
+      <div class="form-section">
+        <div class="sec-title">Género biológico</div>
+        <div class="segmented">
+          <input type="radio" name="genero" id="gM" value="Masculino" checked />
+          <label for="gM">Masculino</label>
+          <input type="radio" name="genero" id="gF" value="Femenino" />
+          <label for="gF">Femenino</label>
+          <input type="radio" name="genero" id="gO" value="Otro / Prefiero no decir" />
+          <label for="gO">Otro</label>
+        </div>
+      </div>
+
+      <!-- MEDIDAS -->
+      <div class="form-section">
+        <div class="sec-title">Medidas corporales</div>
+        <div class="mrow">
+          <div class="field">
+            <label for="altura">Altura <span class="req">*</span></label>
+            <div class="mfield">
+              <input type="number" id="altura" placeholder="170" min="50" max="250" />
+              <span class="munit">cm</span>
+            </div>
+            <span class="err-msg" id="eAltura">Altura entre 50 y 250 cm</span>
+          </div>
+          <div class="field">
+            <label for="peso">Peso <span class="req">*</span></label>
+            <div class="mfield">
+              <input type="number" id="peso" placeholder="70" min="1" max="500" step="0.1" />
+              <span class="munit">kg</span>
+            </div>
+            <span class="err-msg" id="ePeso">Peso entre 1 y 500 kg</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECAPTCHA -->
+      <div class="form-section">
+        <div class="sec-title">Verificación de seguridad</div>
+        <div class="captcha-wrap">
+          <div class="captcha-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Confirma que eres humano para continuar
+          </div>
+
+          <!--
+          ╔══════════════════════════════════════════════════════╗
+          ║  CONFIGURACIÓN reCAPTCHA v2 ("No soy un robot")     ║
+          ║  1. Ir a https://www.google.com/recaptcha/admin      ║
+          ║  2. Registrar tu dominio → tipo v2 Checkbox          ║
+          ║  3. Copiar la Site Key y reemplazar abajo            ║
+          ╚══════════════════════════════════════════════════════╝
+          -->
+          <div class="g-recaptcha"
+               id="captchaWidget"
+               data-sitekey="TU_SITE_KEY_AQUI"
+               data-theme="light">
+          </div>
+
+          <span class="captcha-err" id="eCaptcha">
+            Por favor completa la verificación antes de continuar.
+          </span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <button type="submit" class="btn" id="submitBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 11 12 14 22 4"/>
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        Calcular IMC y enviar resultado
+      </button>
+
+    </form>
+
+    <!-- RESULTADO -->
+    <div class="result-card" id="resultCard">
+      <div class="res-head">
+        <div>
+          <div class="res-name" id="rNombre">—</div>
+          <div class="res-sub">Índice de Masa Corporal</div>
+          <div class="res-cat" id="rCategoria">—</div>
+        </div>
+        <div class="res-val">
+          <div class="res-imc" id="rImc">—</div>
+          <div class="res-unit">kg/m²</div>
+        </div>
+      </div>
+
+      <div class="gauge">
+        <div class="gauge-track">
+          <div class="gauge-pin" id="gaugePin" style="left:5%"></div>
+        </div>
+        <div class="gauge-lbls">
+          <span>Bajo peso</span><span>Normal</span><span>Sobrepeso</span><span>Obesidad</span>
+        </div>
+      </div>
+
+      <div class="chips">
+        <div class="chip"><div class="chip-lbl">ALTURA</div><div class="chip-val" id="cAltura">—</div></div>
+        <div class="chip"><div class="chip-lbl">PESO</div><div class="chip-val" id="cPeso">—</div></div>
+        <div class="chip"><div class="chip-lbl">EDAD</div><div class="chip-val" id="cEdad">—</div></div>
+      </div>
+    </div>
+
+    <div class="status" id="mailStatus"></div>
+
+  </div>
+</div>
+
+<script>
+/* =====================================================
+   EMAILJS — reemplaza con tus credenciales reales
+   Documentación: https://www.emailjs.com/docs/
+   Variables de plantilla disponibles:
+     {{to_email}} {{nombre}} {{imc}} {{categoria}}
+     {{altura}} {{peso}} {{edad}} {{genero}} {{interpretacion}}
+===================================================== */
+const EJ_KEY      = 'W7uFS0575SVAAeT47';
+const EJ_SERVICE  = 'service_6t2n0dr';
+const EJ_TEMPLATE = 'template_v1v8veq';
+emailjs.init(EJ_KEY);
+
+/* ── THEME SWITCH ── */
+const html = document.documentElement;
+const sw   = document.getElementById('themeSwitch');
+const SKEY = 'imc-theme';
+
+// Restore saved preference
+const saved = localStorage.getItem(SKEY) || 'light';
+applyTheme(saved);
+
+sw.addEventListener('change', () => {
+  const t = sw.checked ? 'dark' : 'light';
+  applyTheme(t);
+  localStorage.setItem(SKEY, t);
+});
+
+function applyTheme(t) {
+  html.setAttribute('data-theme', t);
+  sw.checked = (t === 'dark');
+  // Re-render reCAPTCHA with matching theme if loaded
+  if (typeof grecaptcha !== 'undefined') {
+    try {
+      const el = document.getElementById('captchaWidget');
+      el.innerHTML = '';
+      grecaptcha.render('captchaWidget', {
+        sitekey: getSiteKey(),
+        theme: t,
+      });
+    } catch (_) {}
+  }
+}
+
+function getSiteKey() {
+  return document.querySelector('#captchaWidget').dataset.sitekey;
+}
+
+/* ── IMC HELPERS ── */
+const calcIMC   = (kg, cm) => kg / Math.pow(cm / 100, 2);
+const gaugePos  = (v) => ((Math.min(Math.max(v, 10), 45) - 10) / 35) * 100;
+
+function categorize(v) {
+  if (v < 18.5) return { label:'Bajo peso',   s:{bg:'#eff6ff',bd:'#93c5fd',tx:'#1e40af',cBg:'rgba(147,197,253,0.22)',cTx:'#1d4ed8'} };
+  if (v < 25)   return { label:'Peso normal', s:{bg:'#ecfdf5',bd:'#6ee7b7',tx:'#065f46',cBg:'rgba(110,231,183,0.22)',cTx:'#047857'} };
+  if (v < 30)   return { label:'Sobrepeso',   s:{bg:'#fffbeb',bd:'#fcd34d',tx:'#78350f',cBg:'rgba(252,211,77,0.22)', cTx:'#b45309'} };
+  if (v < 35)   return { label:'Obesidad I',  s:{bg:'#fff7ed',bd:'#fb923c',tx:'#7c2d12',cBg:'rgba(251,146,60,0.22)', cTx:'#c2410c'} };
+  if (v < 40)   return { label:'Obesidad II', s:{bg:'#fef2f2',bd:'#fca5a5',tx:'#7f1d1d',cBg:'rgba(252,165,165,0.22)',cTx:'#b91c1c'} };
+  return             { label:'Obesidad III',  s:{bg:'#fef2f2',bd:'#f87171',tx:'#7f1d1d',cBg:'rgba(248,113,113,0.22)',cTx:'#991b1b'} };
+}
+
+function interpret(cat) {
+  return ({
+    'Bajo peso':    'Tu IMC indica bajo peso. Se recomienda consultar con un médico o nutriólogo para evaluar tu estado nutricional y establecer un plan alimenticio adecuado.',
+    'Peso normal':  'Tu IMC se encuentra en el rango normal, indicando un peso saludable. Mantén tus hábitos de alimentación balanceada y actividad física regular.',
+    'Sobrepeso':    'Tu IMC indica sobrepeso. Se recomienda revisar hábitos alimenticios y aumentar la actividad física. Consulta con un profesional de salud para orientación personalizada.',
+    'Obesidad I':   'Tu IMC indica obesidad grado I. Consulta con un médico para un plan de manejo del peso con dieta, ejercicio y seguimiento clínico.',
+    'Obesidad II':  'Tu IMC indica obesidad grado II. Se recomienda atención médica especializada para evaluar riesgos cardiovasculares y metabólicos.',
+    'Obesidad III': 'Tu IMC indica obesidad grado III (mórbida). Es urgente consultar con un equipo médico especializado para evaluación y tratamiento integral.',
+  })[cat] || '';
+}
+
+/* ── VALIDATION HELPERS ── */
+function setErr(inputId, msgId, show) {
+  document.getElementById(inputId).classList.toggle('err', show);
+  document.getElementById(msgId).classList.toggle('show', show);
+}
+
+/* ── EMAIL SEND ── */
+async function sendMail(p) {
+  if (EJ_KEY === 'TU_PUBLIC_KEY')
+    return { ok: false, msg: 'Configure las credenciales de EmailJS para habilitar el envío de correos.' };
+  try {
+    await emailjs.send(EJ_SERVICE, EJ_TEMPLATE, p);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, msg: 'No se pudo enviar el correo. Verifica la configuración de EmailJS.' };
+  }
+}
+
+/* ── SUBMIT ── */
+document.getElementById('imcForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  // Clear all errors
+  ['nombre','apellidos','email','edad','altura','peso'].forEach(id => {
+    document.getElementById(id).classList.remove('err');
+  });
+  document.querySelectorAll('.err-msg').forEach(el => el.classList.remove('show'));
+  document.getElementById('eCaptcha').classList.remove('show');
+
+  const nombre   = document.getElementById('nombre').value.trim();
+  const apellido = document.getElementById('apellidos').value.trim();
+  const email    = document.getElementById('email').value.trim();
+  const edad     = parseInt(document.getElementById('edad').value);
+  const altura   = parseFloat(document.getElementById('altura').value);
+  const peso     = parseFloat(document.getElementById('peso').value);
+  const genero   = document.querySelector('input[name="genero"]:checked').value;
+
+  let ok = true;
+
+  if (!nombre)                                      { setErr('nombre','eNombre',true);       ok=false; }
+  if (!apellido)                                    { setErr('apellidos','eApellidos',true);  ok=false; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))   { setErr('email','eEmail',true);          ok=false; }
+  if (!edad  || edad  < 1   || edad  > 120)         { setErr('edad','eEdad',true);            ok=false; }
+  if (!altura|| altura< 50  || altura> 250)         { setErr('altura','eAltura',true);        ok=false; }
+  if (!peso  || peso  < 1   || peso  > 500)         { setErr('peso','ePeso',true);            ok=false; }
+
+  // reCAPTCHA check
+  const siteKey = getSiteKey();
+  const captchaConfigured = siteKey !== 'TU_SITE_KEY_AQUI' && siteKey.length > 10;
+  let captchaToken = '';
+
+  if (captchaConfigured) {
+    if (typeof grecaptcha === 'undefined') {
+      document.getElementById('eCaptcha').textContent = 'El widget de verificación no ha cargado. Recarga la página.';
+      document.getElementById('eCaptcha').classList.add('show');
+      ok = false;
+    } else {
+      captchaToken = grecaptcha.getResponse();
+      if (!captchaToken) {
+        document.getElementById('eCaptcha').classList.add('show');
+        ok = false;
+      }
+    }
+  }
+
+  if (!ok) return;
+
+  // Loading
+  const btn = document.getElementById('submitBtn');
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 0.9s linear infinite"><path d="M21 12a9 9 0 11-3.2-6.9"/></svg> Procesando...`;
+
+  // Calculate
+  const imc = calcIMC(peso, altura);
+  const imcRnd = parseFloat(imc.toFixed(1));
+  const { label: cat, s } = categorize(imc);
+  const nombreCompleto = `${nombre} ${apellido}`;
+
+  // Show result
+  const rc = document.getElementById('resultCard');
+  rc.style.cssText = `display:block; background:${s.bg}; border-color:${s.bd}; color:${s.tx};`;
+
+  document.getElementById('rNombre').textContent   = nombreCompleto;
+  document.getElementById('rImc').textContent       = imcRnd;
+  document.getElementById('cAltura').textContent    = `${altura} cm`;
+  document.getElementById('cPeso').textContent      = `${peso} kg`;
+  document.getElementById('cEdad').textContent      = `${edad} años`;
+
+  const catEl = document.getElementById('rCategoria');
+  catEl.textContent = cat;
+  catEl.style.background   = s.cBg;
+  catEl.style.color        = s.cTx;
+  catEl.style.borderColor  = s.cTx;
+
+  setTimeout(() => {
+    document.getElementById('gaugePin').style.left = gaugePos(imc) + '%';
+  }, 80);
+
+  rc.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Email
+  const ms = document.getElementById('mailStatus');
+  ms.className = 'status';
+  ms.style.display = 'none';
+
+  const res = await sendMail({
+    to_email: email,
+    nombre: nombreCompleto,
+    imc: imcRnd,
+    categoria: cat,
+    altura: `${altura} cm`,
+    peso: `${peso} kg`,
+    edad: `${edad} años`,
+    genero,
+    interpretacion: interpret(cat),
+    captcha_token: captchaToken,
+  });
+
+  if (res.ok) {
+    ms.className = 'status ok';
+    ms.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Resultado enviado a <strong>${email}</strong>`;
+  } else {
+    ms.className = 'status err';
+    ms.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> ${res.msg}`;
+  }
+
+  // Reset captcha after submit
+  if (captchaConfigured && typeof grecaptcha !== 'undefined') {
+    try { grecaptcha.reset(); } catch (_) {}
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = origHtml;
+});
+</script>
+</body>
+</html>
